@@ -77,7 +77,7 @@ public class Boot {
             String finalSign = sign;
             exec.execute(() -> {
                 File file = allPdf.poll();
-                if (file == null){
+                if (file == null) {
                     return;
                 }
                 try {
@@ -89,7 +89,7 @@ public class Boot {
                     String jsonString = JSONObject.toJSONString(dto);
                     //调用查询接口
                     String retString = HttpClientUtil.sendPost(jsonString, httpClient, f_query_url);
-                    if (retString == null){
+                    if (retString == null) {
                         return;
                     }
                     String retStr = JSON.parse(retString).toString();
@@ -97,6 +97,9 @@ public class Boot {
                     if (resultVO.getStatus().equals("200")) {
                         //调用上传接口
                         String fileId = AttachServiceUtil.upload(file, httpClient, file_url, appid, secret);
+                        if (fileId == null) {
+                            return;
+                        }
                         dto.setFileID(fileId);
                         dto.setFileType("pdf");
                         dto.setSign(finalSign);
