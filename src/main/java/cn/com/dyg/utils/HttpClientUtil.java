@@ -11,13 +11,18 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 
+/*
+    发送post请求
+ */
 public class HttpClientUtil {
     public static String sendPost(String jsonString, CloseableHttpClient httpClient, String url) {
 
         CloseableHttpResponse response = null;
+        HttpPost post = null;
+        StringEntity entity = null;
         try {
-            HttpPost post = new HttpPost(url);
-            StringEntity entity = new StringEntity(jsonString, ContentType.APPLICATION_JSON);
+            post = new HttpPost(url);
+            entity = new StringEntity(jsonString, ContentType.APPLICATION_JSON);
             post.setEntity(entity);
             response = httpClient.execute(post);
             HttpEntity en = response.getEntity();
@@ -29,6 +34,8 @@ public class HttpClientUtil {
             if (response != null) {
                 HttpClientUtils.closeQuietly(response);
             }
+            post = null;
+            entity = null;
         }
         return null;
     }

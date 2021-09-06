@@ -91,6 +91,48 @@ public class ScanUtil {
                 }
             }
         }
+        list = null;
         return pdfList;
     }
+
+    public static ConcurrentLinkedQueue<File> folderMethod3(String path,LinkedList<File> list,ConcurrentLinkedQueue<File> pdfList) {
+
+
+        String[] sts = path.trim().split(";");
+        for (int i = 0; i < sts.length; i++) {
+            File file = new File(sts[i]);
+            //该路径对应的文件或文件夹是否存在
+            if (file.exists()) {
+                //将该路径下的所有文件（文件或文件夹）对象加入队列
+                list.addAll(Arrays.asList(file.listFiles()));
+            }
+        }
+
+        //遍历该队列
+        while (!list.isEmpty()) {
+            File firstF = list.poll();
+            //这里不论是文件夹还是文件，只需判断是否以“.pdf”结尾
+            if (firstF.getAbsolutePath().endsWith(".pdf"))
+                pdfList.add(firstF);
+
+            File[] files = firstF.listFiles();
+
+            if (null == files) {
+
+                continue;
+            }
+            for (File f : files) {
+                if (f.isDirectory()) {
+                    //继续扫描子目录下的pdf
+                    list.add(f);
+                } else {
+                    if (f.getAbsolutePath().endsWith(".pdf"))
+                        pdfList.add(f);
+                }
+            }
+        }
+        return pdfList;
+    }
+
+
 }

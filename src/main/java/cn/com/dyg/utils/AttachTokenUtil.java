@@ -73,22 +73,40 @@ public class AttachTokenUtil {
     }
 
     private String requestToken(String file_url, String appid, String secret) throws URISyntaxException, IOException {
-        CloseableHttpClient client = HttpClients.createDefault();
-        URIBuilder builder = new URIBuilder(file_url + "/api/auth/token");
 
-        builder.addParameter("appid", appid);
-        builder.addParameter("secret", secret);
+        CloseableHttpClient client = null;
+        CloseableHttpResponse response = null;
+        URIBuilder builder = null;
+        HttpGet httpGet = null;
+        try {
+            client = HttpClients.createDefault();
+            builder = new URIBuilder(file_url + "/api/auth/token");
+
+            builder.addParameter("appid", appid);
+            builder.addParameter("secret", secret);
 
 
-        HttpGet httpGet = new HttpGet(builder.build());
-        CloseableHttpResponse response = client.execute(httpGet);
-        HttpEntity entity = response.getEntity();
-        String content = EntityUtils.toString(entity, "utf-8");
+            httpGet = new HttpGet(builder.build());
+            response = client.execute(httpGet);
+            HttpEntity entity = response.getEntity();
+            String content = EntityUtils.toString(entity, "utf-8");
 
-        JSONObject jsonVO = JSON.parseObject(content);
-        JSONObject data = (JSONObject) jsonVO.get("data");
-        String code = (String) data.get("access_token");
-        return code;
+            JSONObject jsonVO = JSON.parseObject(content);
+            JSONObject data = (JSONObject) jsonVO.get("data");
+            String code = (String) data.get("access_token");
+            return code;
+        } finally {
+            if (response != null) {
+                response.close();
+            }
+            if (client != null) {
+                client.close();
+            }
+            client = null;
+            builder = null;
+            httpGet = null;
+        }
+
     }
 
     private void clearCache() {

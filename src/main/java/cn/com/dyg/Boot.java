@@ -40,17 +40,28 @@ public class Boot {
 
         //获取http连接池
         CloseableHttpClient httpClient = HttpClientRequest.newInstance().getHttpClient();
-
+        //签名
+        byte[] encrypted = AesCBCUtil.AES_CBC_Encrypt(AesCBCUtil.PASSWORD.getBytes(), AesCBCUtil.KEY.getBytes(), AesCBCUtil.IV.getBytes());
+        String sign = null;
+        try {
+            sign = AesCBCUtil.encryptBASE64(encrypted);
+        } catch (Exception exception) {
+            exception.printStackTrace();
+        }
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        String finalSign = sign;
+        encrypted = null;
+        sign = null;
         executor.scheduleWithFixedDelay(() -> {
-            //扫描路径下所有pdf
-            checkAndUpload(path, endPath, httpClient, pp2, hostAddress);
+            //查询并上传
+            checkAndUpload(path, endPath, httpClient, pp2, hostAddress, finalSign);
+            System.gc();
         }, 0, 2, TimeUnit.MINUTES);
 
 
     }
 
-    private static void checkAndUpload(String path, String endPath, CloseableHttpClient httpClient, Properties properties, String hostAddress) {
+    private static void checkAndUpload(String path, String endPath, CloseableHttpClient httpClient, Properties properties, String hostAddress, String sign) {
         String file_url = properties.getProperty("FILE_URL");
         String f_query_url = properties.getProperty("F_QUERY_URL");
         String f_insert_url = properties.getProperty("F_INSERT_URL");
@@ -60,23 +71,15 @@ public class Boot {
         //扫描路径下所有pdf
         ConcurrentLinkedQueue<File> allPdf = ScanUtil.folderMethod2(path);
         if (allPdf.isEmpty()) {
+            allPdf = null;
             return;
         }
-        //签名
-        byte[] encrypted = AesCBCUtil.AES_CBC_Encrypt(AesCBCUtil.PASSWORD.getBytes(), AesCBCUtil.KEY.getBytes(), AesCBCUtil.IV.getBytes());
-        String sign = null;
-        try {
-            sign = AesCBCUtil.encryptBASE64(encrypted);
-        } catch (Exception exception) {
-            exception.printStackTrace();
-        }
-
         //创建固定大小的线程池
-        ExecutorService exec = Executors.newFixedThreadPool(3);
+        ExecutorService exec = Executors.newFixedThreadPool(2);
         while (!allPdf.isEmpty()) {
-            String finalSign = sign;
+            ConcurrentLinkedQueue<File> finalAllPdf = allPdf;
             exec.execute(() -> {
-                File file = allPdf.poll();
+                File file = finalAllPdf.poll();
                 if (file == null) {
                     return;
                 }
@@ -85,7 +88,7 @@ public class Boot {
                     UploadRecordDTO dto = new UploadRecordDTO();
                     dto.setAbsolutePath(absolutePath);
                     dto.setHostIP(hostAddress);
-                    dto.setSign(finalSign);
+                    dto.setSign(sign);
                     String jsonString = JSONObject.toJSONString(dto);
                     //调用查询接口
                     String retString = HttpClientUtil.sendPost(jsonString, httpClient, f_query_url);
@@ -102,7 +105,7 @@ public class Boot {
                         }
                         dto.setFileID(fileId);
                         dto.setFileType("pdf");
-                        dto.setSign(finalSign);
+                        dto.setSign(sign);
                         String jsonString2 = JSONObject.toJSONString(dto);
                         //调用插入接口
                         HttpClientUtil.sendPost(jsonString2, httpClient, f_insert_url);
@@ -110,12 +113,17 @@ public class Boot {
                     }
                     //结束后移动文件
                     fileMoveTo(absolutePath, endPath);
+                    dto = null;
+                    resultVO = null;
+                    file = null;
                 } catch (Exception exception) {
                     exception.printStackTrace();
                 }
             });
         }
         exec.shutdown();
+        exec = null;
+        allPdf = null;
     }
 
     private static void fileMoveTo(String startPath, String endPath) {
@@ -125,6 +133,8 @@ public class Boot {
             tmpFile.mkdirs();
         }
         startFile.renameTo(new File(endPath + startFile.getName()));
+        startFile = null;
+        tmpFile = null;
     }
 
     private static boolean judgeIsNormal(String ip) {

@@ -26,15 +26,19 @@ public class AttachServiceUtil {
         String base64;
         InputStream in = null;
         CloseableHttpResponse response = null;
+        byte[] bytes = null;
+        Map<String, Object> map = null;
+        HttpPost httpPost = null;
+        StringEntity s = null;
         try {
             in = new FileInputStream(file);
-            byte[] bytes = new byte[(int) file.length()];
+            bytes = new byte[(int) file.length()];
             in.read(bytes);
             base64 = Base64.encodeBase64String(bytes);
             String contentType = new MimetypesFileTypeMap().getContentType(file);
             String fileName = file.getName();
 
-            Map<String, Object> map = new HashMap<>();
+            map = new HashMap<>();
             map.put("contentType", contentType);
             map.put("fielData", base64);
             map.put("fileName", fileName);
@@ -42,9 +46,9 @@ public class AttachServiceUtil {
 
             String token = AttachTokenUtil.getInstance().queryToken(file_url, appid, secret);
             String url = file_url + "/api/file/upload" + "?access_token=" + token;
-            HttpPost httpPost = new HttpPost(url);
+            httpPost = new HttpPost(url);
 
-            StringEntity s = new StringEntity(jsonString, "UTF-8");
+            s = new StringEntity(jsonString, "UTF-8");
             s.setContentType("application/json");
             httpPost.setEntity(s);
             response = httpClient.execute(httpPost);
@@ -69,7 +73,10 @@ public class AttachServiceUtil {
             if (response != null) {
                 HttpClientUtils.closeQuietly(response);
             }
-
+            bytes = null;
+            map = null;
+            httpPost = null;
+            s = null;
         }
         return null;
     }
